@@ -11,8 +11,10 @@ fi
 # Get the current day or accept it as an argument
 DAY=${1:-$(date +%d)}
 
+DAY=$((10#$DAY))
+
 # Pad the day with a leading zero if necessary
-DAY=$(printf "%02d" $DAY)
+DAY=$(printf "%02d" "$DAY")
 
 # Define the Rust file name
 FILE_NAME="day_${DAY}.rs"
@@ -35,7 +37,7 @@ if [ ! -f "$FILE_PATH" ]; then
 use std::fs;
 
 // Main function
-fn day_${DAY}() {
+pub fn day_${DAY}() {
     let input_file = "$INPUT_FILE";
 
     println!("Puzzle 1 result: {}", puzzle1(input_file));
