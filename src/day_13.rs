@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fs, ops::{Add, Mul, Rem}};
+use std::{cmp::Ordering, fs, ops::{Add, Div, Mul, Rem}, usize};
 
 #[derive(PartialEq, Eq, Ord, Clone, Copy, Debug)]
 struct Point(usize, usize);
@@ -41,6 +41,25 @@ impl Add for Point {
     }
 }
 
+impl Point {
+    fn div_num(&self, rhs: Point) -> Option<usize> {
+        let div_x = self.0 / rhs.0;
+        if div_x == self.1 / rhs.1 {
+            Some(div_x)
+        } else {
+            None
+        }
+    }
+
+    fn is_divisible(&self, rhs: Point) -> bool {
+        let rem_x = self.0 % rhs.0 == 0;
+        let rem_y = self.1 % rhs.1 == 0;
+        rem_x && rem_y
+    }
+}
+
+
+
 
 #[derive(Debug)]
 struct ClawMachine {
@@ -56,12 +75,34 @@ impl ClawMachine {
             b,
             prize
         }
-    }
+    } 
 
     fn solve_high(&self) -> Option<usize> {
         let prize = Point(self.prize.0, self.prize.1) * 10000000000000;
-        let a = Point(self.a.0, self.a.1);
-        let b = Point(self.b.0, self.b.1);
+        let button_a = Point(self.a.0, self.a.1);
+        let button_b = Point(self.b.0, self.b.1);
+
+        // given PRIZE = A * x1 + B * x2
+        // target u(x1,x2) = x1^.25 * x2^.75
+        // minimize Z = x1 * 3 + x2
+
+        // 0 = PRIZE - A * x1 - B * x2 
+
+        // L = x1^.25 * x2^.75 + λ * (PRIZE - A * x1 - B * x2)
+
+        // dL/dx = 0.25 * x1 ^ -.75 * x2 ^ .75 - λ * A      => λ * A = 0.25 * x1 ^ -.75 * x2 ^ .75
+        // dL/dy = 0.75 * x1 ^ .25 * x2 ^ -.25 - λ * B      => λ * B = 0.75 * x1 ^ .25 * x2 ^ -.25
+        // dL/dλ = PRIZE - A * x1 - B * x2 = 0              => PRIZE = A * x1 + B * x2
+
+        
+        // A = 0.25 * x2 ^ .75 * x2 ^ .25
+        // B = 0.75 * x1 ^ .25 * x1 ^ .75
+
+        // x2 = (A * 3 * x1) / B
+        // (PRIZE * B) / A = B * 4 * x1
+        // x1 = PRIZE / (4 * A)
+        // x2 = (3 * PRIZE) / (4 * B)
+        // is this it?!
         None
     }
 
@@ -90,8 +131,6 @@ impl ClawMachine {
         min_cost
     }
 }
-
-
 
 impl FromIterator<String> for ClawMachine {
     fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
@@ -192,6 +231,6 @@ mod tests {
 
     #[test]
     fn test_puzzle2() {
-        assert_eq!(puzzle2("./input_test/day_13.txt"), 0);
+        assert_eq!(puzzle2("./input_test/day_13.txt"), 480);
     }
 }
