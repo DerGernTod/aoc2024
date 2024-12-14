@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, fs, ops::{Add, Div, Mul, Rem}, usize};
 
 #[derive(PartialEq, Eq, Ord, Clone, Copy, Debug)]
-struct Point(usize, usize);
+struct Point(isize, isize);
 
 impl PartialOrd for Point {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -25,10 +25,10 @@ impl Rem for Point {
     }
 }
 
-impl Mul<usize> for Point {
+impl Mul<isize> for Point {
     type Output = Point;
 
-    fn mul(self, rhs: usize) -> Self::Output {
+    fn mul(self, rhs: isize) -> Self::Output {
         Point(self.0 * rhs, self.1 * rhs)
     }
 }
@@ -42,7 +42,7 @@ impl Add for Point {
 }
 
 impl Point {
-    fn div_num(&self, rhs: Point) -> Option<usize> {
+    fn div_num(&self, rhs: Point) -> Option<isize> {
         let div_x = self.0 / rhs.0;
         if div_x == self.1 / rhs.1 {
             Some(div_x)
@@ -77,59 +77,36 @@ impl ClawMachine {
         }
     } 
 
-    fn solve_high(&self) -> Option<usize> {
-        let prize = Point(self.prize.0, self.prize.1) * 10000000000000;
-        let button_a = Point(self.a.0, self.a.1);
-        let button_b = Point(self.b.0, self.b.1);
-
-        // given PRIZE = A * x1 + B * x2
-        // target u(x1,x2) = x1^.25 * x2^.75
-        // minimize Z = x1 * 3 + x2
-
-        // 0 = PRIZE - A * x1 - B * x2 
-
-        // L = x1^.25 * x2^.75 + λ * (PRIZE - A * x1 - B * x2)
-
-        // dL/dx = 0.25 * x1 ^ -.75 * x2 ^ .75 - λ * A      => λ * A = 0.25 * x1 ^ -.75 * x2 ^ .75
-        // dL/dy = 0.75 * x1 ^ .25 * x2 ^ -.25 - λ * B      => λ * B = 0.75 * x1 ^ .25 * x2 ^ -.25
-        // dL/dλ = PRIZE - A * x1 - B * x2 = 0              => PRIZE = A * x1 + B * x2
-
-        
-        // A = 0.25 * x2 ^ .75 * x2 ^ .25
-        // B = 0.75 * x1 ^ .25 * x1 ^ .75
-
-        // x2 = (A * 3 * x1) / B
-        // (PRIZE * B) / A = B * 4 * x1
-        // x1 = PRIZE / (4 * A)
-        // x2 = (3 * PRIZE) / (4 * B)
-        // is this it?!
-        None
-    }
-
     fn solve(&self) -> Option<usize> {
-        // a cost 3, b cost 1
-        let prize = Point(self.prize.0, self.prize.1);
-        let a = Point(self.a.0, self.a.1);
-        let b = Point(self.b.0, self.b.1);
+        let prize = Point(self.prize.0 as isize, self.prize.1 as isize);
+        let a = Point(self.a.0 as isize, self.a.1 as isize);
+        let b = Point(self.b.0 as isize, self.b.1 as isize);
 
-        let mut min_cost: Option<usize> = None;
+        // prize.0 = a.0 * A + b.0 * B      B = (prize.0 - a.0 * A) / b.0
+        // prize.1 = a.1 * A + b.1 * B      A = (prize.1 - b.1 * B) / a.1
 
-        for num_a in 0..=100 {
-            for num_b in 0..=100 {
-                let sum = a * num_a + b * num_b;
-                if sum > prize {
-                    break;
-                } else if sum == prize {
-                    let cost = num_a * 3 + num_b;
-                    min_cost = min_cost
-                        .filter(|&cur_min| cur_min < cost)
-                        .or(Some(cost));
-                    break;
-                }
-            }
+        // B = (prize.0 - prize.1 - b.1 * B)
+        // B - b.1 * B = prize.0 - prize.1
+
+        let det = a.0 * b.1 - a.1 * b.0;
+        if det == 0 {
+            return None;
         }
-        min_cost
+        let inv_a = b.1 as f64 / det as f64;
+        let inv_b = -b.0 as f64 / det as f64;
+        let inv_c = -a.1 as f64 / det as f64;
+        let inv_d = a.0 as f64 / det as f64;
+        
+        let a_res = inv_a * prize.0 as f64 + inv_b * prize.1 as f64;
+        let b_res = inv_c * prize.0 as f64 + inv_d * prize.1 as f64;
+
+        if a_res.fract().abs() > 0.01 || b_res.fract().abs() > 0.01 {
+            None
+        } else {
+            Some(a_res as usize * 3 + b_res as usize)
+        }
     }
+
 }
 
 impl FromIterator<String> for ClawMachine {
@@ -215,14 +192,50 @@ fn read_claw_machines(input_file: &str) -> Vec<ClawMachine> {
 // Puzzle 2 function
 fn puzzle2(input_file: &str) -> usize {
     read_claw_machines(input_file)
-        .iter()
-        .filter_map(|machine| machine.solve_high())
+        .into_iter()
+        .map(|machine| ClawMachine {
+            a: machine.a,
+            b: machine.b,
+            prize: (machine.prize.0 + 10000000000000, machine.prize.1 + 10000000000000)
+        })
+        .filter_map(|machine| machine.solve())
         .sum()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_high_solve() {
+        let machine = ClawMachine {
+            a: (94, 34),
+            b: (22, 67),
+            prize: (8400, 5400)
+        };
+        assert_eq!(machine.solve(), Some(280));
+
+        let machine = ClawMachine {
+            a: (26, 66),
+            b: (67, 21),
+            prize: (12748, 12176)
+        };
+        assert_eq!(machine.solve(), None);
+
+        let machine = ClawMachine {
+            a: (17, 86),
+            b: (84, 37),
+            prize: (7870, 6450)
+        };
+        assert_eq!(machine.solve(), Some(200));
+
+        let machine = ClawMachine {
+            a: (69, 23),
+            b: (27, 71),
+            prize: (18641, 10279)
+        };
+        assert_eq!(machine.solve(), None);
+    }
 
     #[test]
     fn test_puzzle1() {
