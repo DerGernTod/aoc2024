@@ -1,0 +1,30 @@
+extern crate lpsolve;
+
+use std::ffi::CString;
+
+fn main() {
+    let mut lp = LpSolve::new().unwrap();
+    lp.set_verbose(LpSolve::VERBOSE_NONE).unwrap();
+    lp.set_maxtime(0).unwrap(); // No time limit
+
+    // Define variables
+    lp.add_variable("x", 3.0).unwrap(); // Cost 3 points for A
+    lp.add_variable("y", 1.0).unwrap(); // Cost 1 point for B
+
+    // Define constraints
+    lp.set_obj_fn_coeff(0, 0, 3.0).unwrap(); // Objective function coefficients
+    lp.set_obj_fn_coeff(1, 0, 1.0).unwrap();
+    lp.set_constr_type(0, LpSolve::LE).unwrap(); // Constraint type (<=)
+    lp.set_constr_coeff(0, 0, 2).unwrap(); // Constraint coefficients
+    lp.set_constr_coeff(0, 1, 1).unwrap();
+    lp.set_rhsv(0, 10000000000000).unwrap(); // Right-hand side value
+
+    // Solve the problem
+    lp.solve().unwrap();
+
+    // Get the results
+    let x_value = lp.get_variables()[0];
+    let y_value = lp.get_variables()[1];
+
+    println!("x: {}, y: {}", x_value, y_value);
+}

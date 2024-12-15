@@ -1,6 +1,6 @@
-use std::{fs, ops::{Add, Div, Mul, Rem}};
+use std::{cmp::Ordering, collections::HashMap, fs, io, ops::{Add, Div, Mul, Rem}};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Vec2D(isize, isize);
 
 impl Mul<isize> for Vec2D {
@@ -66,6 +66,17 @@ impl Robot {
         }
     }
 
+    fn step(&mut self) {
+        let mut new_pos = (self.position + self.velocity) % self.limit;
+        if new_pos.0 < 0 {
+            new_pos.0 += self.limit.0;
+        }
+        if new_pos.1 < 0 {
+            new_pos.1 += self.limit.1;
+        }
+        self.position = new_pos
+    }
+
     fn is_left(&self) -> bool {
         let edge = self.limit.0 / 2;
         self.position.0 < edge
@@ -128,8 +139,45 @@ fn read_to_bots(input_file: &str) -> Vec<Robot> {
 
 // Puzzle 2 function
 fn puzzle2(input_file: &str) -> usize {
-    let input = fs::read_to_string(input_file).expect("Failed to read input file");
-    0
+    let mut bots = read_to_bots(input_file);
+    let mut iteration = 0;
+    loop {
+        bots.iter_mut().for_each(|bot| bot.step());
+        let map: HashMap<Vec2D, usize> = bots
+            .iter()
+            .fold(HashMap::new(), |mut map, bot| {
+                let entry = map.entry(bot.position).or_default();
+                *entry += 1;
+                map
+            });
+        print_map(&map);
+        println!("Iteration {} complete. x to exit: ", iteration);
+        let mut input = String::new(); // Create a mutable String to store the input
+        io::stdin()
+            .read_line(&mut input) // Read input and store it in the `input` variable
+            .expect("Failed to read line");
+
+        if input == "x\n" {
+            break;
+        }
+        iteration += 1;
+    }
+    iteration
+}
+
+fn print_map(map: &HashMap<Vec2D, usize>) {
+    for y in 0..103 {
+        for x in 0..101 {
+            if let Some(num) = map.get(&Vec2D(x, y)) {
+                print!("{}", num);
+            } else {
+                print!(".");
+            }
+        }
+        println!();
+
+    }
+    println!();
 }
 
 #[cfg(test)]

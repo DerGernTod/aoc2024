@@ -1,66 +1,5 @@
 use std::{cmp::Ordering, fs, ops::{Add, Div, Mul, Rem}, usize};
 
-#[derive(PartialEq, Eq, Ord, Clone, Copy, Debug)]
-struct Point(isize, isize);
-
-impl PartialOrd for Point {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.0 < other.0 && self.1 < other.1 {
-            Some(Ordering::Less)
-        } else if self.0 > other.0 && self.1 > other.1 {
-            Some(Ordering::Greater)
-        } else if self.0 == other.0 && self.1 == other.1 {
-            Some(Ordering::Equal)
-        } else {
-            None
-        }
-    }
-}
-
-impl Rem for Point {
-    type Output = Point;
-
-    fn rem(self, rhs: Self) -> Self::Output {
-        Point(self.0 % rhs.0, self.1 % rhs.1)
-    }
-}
-
-impl Mul<isize> for Point {
-    type Output = Point;
-
-    fn mul(self, rhs: isize) -> Self::Output {
-        Point(self.0 * rhs, self.1 * rhs)
-    }
-}
-
-impl Add for Point {
-    type Output = Point;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        Point(self.0 + rhs.0, self.1 + rhs.1)
-    }
-}
-
-impl Point {
-    fn div_num(&self, rhs: Point) -> Option<isize> {
-        let div_x = self.0 / rhs.0;
-        if div_x == self.1 / rhs.1 {
-            Some(div_x)
-        } else {
-            None
-        }
-    }
-
-    fn is_divisible(&self, rhs: Point) -> bool {
-        let rem_x = self.0 % rhs.0 == 0;
-        let rem_y = self.1 % rhs.1 == 0;
-        rem_x && rem_y
-    }
-}
-
-
-
-
 #[derive(Debug)]
 struct ClawMachine {
     a: (usize, usize),
@@ -78,33 +17,22 @@ impl ClawMachine {
     } 
 
     fn solve(&self) -> Option<usize> {
-        let prize = Point(self.prize.0 as isize, self.prize.1 as isize);
-        let a = Point(self.a.0 as isize, self.a.1 as isize);
-        let b = Point(self.b.0 as isize, self.b.1 as isize);
-
-        // prize.0 = a.0 * A + b.0 * B      B = (prize.0 - a.0 * A) / b.0
-        // prize.1 = a.1 * A + b.1 * B      A = (prize.1 - b.1 * B) / a.1
-
-        // B = (prize.0 - prize.1 - b.1 * B)
-        // B - b.1 * B = prize.0 - prize.1
-
+        let ClawMachine{ a, b, prize } = self;
         let det = a.0 * b.1 - a.1 * b.0;
         if det == 0 {
             return None;
         }
-        let inv_a = b.1 as f64 / det as f64;
-        let inv_b = -b.0 as f64 / det as f64;
-        let inv_c = -a.1 as f64 / det as f64;
-        let inv_d = a.0 as f64 / det as f64;
-        
-        let a_res = inv_a * prize.0 as f64 + inv_b * prize.1 as f64;
-        let b_res = inv_c * prize.0 as f64 + inv_d * prize.1 as f64;
 
-        if a_res.fract().abs() > 0.01 || b_res.fract().abs() > 0.01 {
-            None
-        } else {
-            Some(a_res as usize * 3 + b_res as usize)
+        let num_a = prize.0 * b.1 - prize.1 * b.0;
+        let num_b = a.0 * prize.1 - a.1 * prize.0;
+        if num_a % det != 0 || num_b % det != 0 {
+            return None;
         }
+
+        let int_a = num_a / det;
+        let int_b = num_b / det;
+    
+        Some(int_a as usize * 3 + int_b as usize)
     }
 
 }
@@ -244,6 +172,7 @@ mod tests {
 
     #[test]
     fn test_puzzle2() {
+        // this breaks
         assert_eq!(puzzle2("./input_test/day_13.txt"), 480);
     }
 }
