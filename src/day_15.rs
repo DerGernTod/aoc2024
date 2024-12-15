@@ -1,6 +1,6 @@
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, fs, ops::{Add, AddAssign, Sub, SubAssign}};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct Vec2D(isize, isize);
 
 impl Add for Vec2D {
@@ -8,6 +8,26 @@ impl Add for Vec2D {
 
     fn add(self, rhs: Self) -> Self::Output {
         Vec2D(self.0 + rhs.0, self.1 + rhs.1)
+    }
+}
+
+impl AddAssign for Vec2D {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl SubAssign for Vec2D {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl Sub for Vec2D {
+    type Output = Vec2D;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Vec2D(self.0 - rhs.0, self.1 - rhs.1)
     }
 }
 
@@ -20,15 +40,43 @@ pub fn day_15() {
 }
 
 // Puzzle 1 function
-fn puzzle1(input_file: &str) -> usize {
+fn puzzle1(input_file: &str) -> isize {
     let (mut map, commands) = read_map_commands(input_file);
-    let start = find_start(&map);
+    let mut robot_pos = find_start(&map);
     for command in commands {
-        let potential_target = start + command;
-
-        let map_content = map.entry(potential_target);
+        let mut potential_target = robot_pos;
+        let mut chars_to_insert = vec![];
+        let should_move = loop {
+            potential_target += command;
+            let next_map_entry = map.get(&potential_target);
+            
+            match next_map_entry {
+                Some('.') => {
+                    break true;
+                },
+                Some('O') => {
+                    chars_to_insert.push('O');
+                },
+                Some('#') => {
+                    chars_to_insert.clear();
+                    break false;   
+                },
+                _ => panic!("Expected valid character at {:?} but got {:?}", potential_target, next_map_entry)
+            }
+        };
+        
+        if should_move {
+            while let Some(char) = chars_to_insert.pop() {
+                map.entry(potential_target).and_modify(|map_pos| *map_pos = char);
+                potential_target -= command
+            }
+            map.entry(robot_pos).and_modify(|map_pos| *map_pos = '.');
+            robot_pos += command;
+            map.entry(robot_pos).and_modify(|map_pos| *map_pos = '@');
+        }
+        print_map(&map);
     }
-    10092
+    calc_gps_pos(&map)
 }
 
 fn find_start(map: &HashMap<Vec2D, char>) -> Vec2D {
@@ -71,6 +119,28 @@ fn read_map_commands(input_file: &str) -> (HashMap<Vec2D, char>, Vec<Vec2D>) {
 
 }
 
+fn print_map(map: &HashMap<Vec2D, char>) {
+    for y in 0..10 {
+        for x in 0..10 {
+            if let Some(ch) = map.get(&Vec2D(x, y)) {
+                print!("{}", ch);
+            } else {
+                print!(".");
+            }
+        }
+        println!();
+
+    }
+    println!();
+}
+
+fn calc_gps_pos(map: &HashMap<Vec2D, char>) -> isize {
+    map
+        .iter()
+        .filter(|(_, &char)| char == 'O')
+        .map(|(coords, _)| coords.0 + coords.1 * 100)
+        .sum()
+}
 // Puzzle 2 function
 fn puzzle2(input_file: &str) -> usize {
     let input = fs::read_to_string(input_file).expect("Failed to read input file");
