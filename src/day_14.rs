@@ -150,15 +150,17 @@ fn puzzle2(input_file: &str) -> usize {
                 *entry += 1;
                 map
             });
-        print_map(&map);
-        println!("Iteration {} complete. x to exit: ", iteration);
-        let mut input = String::new(); // Create a mutable String to store the input
-        io::stdin()
-            .read_line(&mut input) // Read input and store it in the `input` variable
-            .expect("Failed to read line");
+        if iteration > 5 && (iteration - 6) % 101 == 0 {
+            println!("After {} seconds:", iteration + 1);
+            print_map(&map);
+            let mut input = String::new(); // Create a mutable String to store the input
+            io::stdin()
+                .read_line(&mut input) // Read input and store it in the `input` variable
+                .expect("Failed to read line");
 
-        if input == "x\n" {
-            break;
+            if input == "x\n" {
+                break;
+            }
         }
         iteration += 1;
     }

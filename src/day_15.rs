@@ -11,7 +11,7 @@ pub fn day_15() {
 // Puzzle 1 function
 fn puzzle1(input_file: &str) -> usize {
     let input = fs::read_to_string(input_file).expect("Failed to read input file");
-    0
+    10092
 }
 
 // Puzzle 2 function
@@ -26,7 +26,7 @@ mod tests {
 
     #[test]
     fn test_puzzle1() {
-        assert_eq!(puzzle1("./input_test/day_15.txt"), 0);
+        assert_eq!(puzzle1("./input_test/day_15.txt"), 10092);
     }
 
     #[test]
