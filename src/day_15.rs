@@ -163,7 +163,7 @@ fn read_map_wide(map_str: &str) -> HashMap<Vec2D, char> {
 }
 
 fn print_map(map: &HashMap<Vec2D, char>) {
-    for y in 0..20 {
+    for y in 0..10 {
         for x in 0..20 {
             if let Some(ch) = map.get(&Vec2D(x, y)) {
                 print!("{}", ch);
@@ -194,47 +194,65 @@ fn calc_gps_pos_wide(map: &HashMap<Vec2D, char>) -> isize {
 }
 
 // Puzzle 2 function
-fn puzzle2(input_file: &str) -> usize {
-    let (map, commands) = read_map_wide_commands(input_file);
+fn puzzle2(input_file: &str) -> isize {
+    let (mut map, commands) = read_map_wide_commands(input_file);
     print_map(&map);
-    let start = find_start(&map);
+    let mut bot_pos = find_start(&map);
 
     for command in commands {
-        if can_execute_command(&map, &start, &command) {
-
+        println!("Command: {:?}", command);
+        if let Some(switches) = execute_command(&mut map, bot_pos, command, true) {
+            for (a, b) in switches {
+                let a_char = *map.get(&a).expect("Expecting switch position a to exist");
+                let b_char = *map.get(&b).expect("Expecting switch position b to exist");
+                map.entry(a).and_modify(|ch| *ch = b_char);
+                map.entry(b).and_modify(|ch| *ch = a_char);
+            }
+            bot_pos = bot_pos + command;
         }
+        print_map(&map);
     }
 
-    println!("Start: {:?}", start);
-    0
-}
-
-fn can_execute_command(map: &HashMap<Vec2D, char>, start_pos: Vec2D, command: Vec2D) -> bool {
-    let cur_char = map.get(&start_pos).expect(&format!("Expecting valid position at {:?}", start_pos));
-    match cur_char {
-        '#' => false,
-        '.' => true,
-        x => panic!("Unexpected character found while checking command: {}!", x)
-    }
-}
-
-fn execute_command(map: &mut HashMap<Vec2D, char>, start_pos: Vec2D, command: Vec2D) {
-    let cur_char = map.get(&start_pos).expect(&format!("Expecting valid position at {:?}", start_pos));
-    match cur_char {
-        '@' => execute_command(map, start_pos + command, command),
-        '.' => (),
-        '[' => {
-            execute_command(map, start_pos + command, command);
-            execute_command(map, start_pos + Vec2D(1, 0), command);
-        }
-        x => panic!("Unexpected character found while executing command: {}!", x)
-    }
     
-    let prev_pos = start_pos - command;
-    let prev_char = map.get_mut(&prev_pos).expect(&format!("Expecting valid position at {:?}", prev_pos));
-    let cur_char = map.get_mut(&start_pos).expect(&format!("Expecting valid position at {:?}", start_pos));
-    *cur_char = *prev_char;
-    *prev_char = '.';
+    calc_gps_pos_wide(&map)
+}
+
+fn execute_command(map: &mut HashMap<Vec2D, char>, start_pos: Vec2D, command: Vec2D, check_side: bool) -> Option<Vec<(Vec2D, Vec2D)>> {
+    let cur_char = map.get(&start_pos).expect(&format!("Expecting valid position at {:?}", start_pos));
+    let is_start = cur_char == &'@';
+    let result = match cur_char {
+        '@' => execute_command(map, start_pos + command, command, true),
+        '.' => Some(vec![]),
+        '[' | ']' => {
+            let dir = if cur_char == &'[' { Vec2D(1, 0) } else { Vec2D(-1, 0) };
+            // check if command was horizontal or vertical
+            if command.0.abs() == 1 {
+                execute_command(map, start_pos + command, command, false)
+            } else {
+                let base_result = execute_command(map, start_pos + command, command, true);
+                if check_side {
+                    let side_result = execute_command(map, start_pos + dir + command, command, false);
+                    base_result.zip(side_result).map(|(mut base, side)| {
+                        base.extend(side);
+                        base
+                    })
+                } else {
+                    base_result
+                }
+                
+            }
+        },
+        '#' => None,
+        x => panic!("Unexpected character found while executing command: {}!", x)
+    };
+    if is_start {
+        result
+    } else {
+        result.map(|mut switches| {
+            switches.push((start_pos - command, start_pos));
+            switches
+        })
+    }
 }
 
 #[cfg(test)]
@@ -248,6 +266,6 @@ mod tests {
 
     #[test]
     fn test_puzzle2() {
-        assert_eq!(puzzle2("./input_test/day_15.txt"), 0);
+        assert_eq!(puzzle2("./input_test/day_15.txt"), 9021);
     }
 }
