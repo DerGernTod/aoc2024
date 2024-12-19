@@ -94,18 +94,28 @@ fn read_map_commands(input_file: &str) -> (HashMap<Vec2D, char>, Vec<Vec2D>) {
         .split("\n\n")
         .collect();
 
-    let map: HashMap<Vec2D, char> = inputs
-        .swap_remove(0)
+    let map_str = inputs.swap_remove(0);
+    let map: HashMap<Vec2D, char> = read_map(map_str);
+    let command_str = inputs.swap_remove(0);
+    let commands: Vec<Vec2D> = read_commands(command_str);
+        
+    (map, commands)
+
+}
+
+fn read_map(map_str: &str) -> HashMap<Vec2D, char> {
+    map_str
         .lines()
         .enumerate()
         .flat_map(move |(y, line)| line
             .chars()
             .enumerate()
             .map(move |(x, char)| (Vec2D(x as isize, y as isize), char)))
-        .collect();
+        .collect()    
+}
 
-    let commands: Vec<Vec2D> = inputs
-        .swap_remove(0)
+fn read_commands(command_str: &str) -> Vec<Vec2D> {
+    command_str
         .lines()
         .flat_map(|line| line.chars())
         .map(|char| match char {
@@ -114,14 +124,47 @@ fn read_map_commands(input_file: &str) -> (HashMap<Vec2D, char>, Vec<Vec2D>) {
             '>' => Vec2D(1, 0),
             '^' => Vec2D(0, -1),
             _ => panic!("Unexpected command!")
-        }).collect();
-    (map, commands)
+        })
+        .collect()
+}
 
+fn read_map_wide_commands(input_file: &str) -> (HashMap<Vec2D, char>, Vec<Vec2D>) {
+    let inputs = fs::read_to_string(input_file)
+        .expect("Failed to read input file");
+    let mut inputs: Vec<&str> = inputs
+        .split("\n\n")
+        .collect();
+
+    let map_str = inputs.swap_remove(0);
+    let map: HashMap<Vec2D, char> = read_map_wide(map_str);
+    let command_str = inputs.swap_remove(0);
+    let commands: Vec<Vec2D> = read_commands(command_str);
+        
+    (map, commands)
+}
+fn read_map_wide(map_str: &str) -> HashMap<Vec2D, char> {
+    map_str
+        .lines()
+        .enumerate()
+        .flat_map(move |(y, line)| line
+            .chars()
+            .enumerate()
+            .flat_map(move |(x, char)| {
+                let first_loc = Vec2D(x as isize * 2, y as isize);
+                let second_loc = Vec2D(x as isize * 2 + 1, y as isize);
+                match char {
+                    '@' => [(first_loc, '@'), (second_loc, '.')],
+                    'O' => [(first_loc, '['), (second_loc, ']')],
+                    x => [(first_loc, char), (second_loc, char)]
+                }
+            })
+        )
+        .collect()    
 }
 
 fn print_map(map: &HashMap<Vec2D, char>) {
-    for y in 0..10 {
-        for x in 0..10 {
+    for y in 0..20 {
+        for x in 0..20 {
             if let Some(ch) = map.get(&Vec2D(x, y)) {
                 print!("{}", ch);
             } else {
@@ -134,17 +177,64 @@ fn print_map(map: &HashMap<Vec2D, char>) {
     println!();
 }
 
-fn calc_gps_pos(map: &HashMap<Vec2D, char>) -> isize {
+fn calc_gps_pos_with(map: &HashMap<Vec2D, char>, find_char: char, divisor: isize) -> isize {
     map
         .iter()
-        .filter(|(_, &char)| char == 'O')
-        .map(|(coords, _)| coords.0 + coords.1 * 100)
+        .filter(|(_, &char)| char == find_char)
+        .map(|(coords, _)| coords.0 / divisor + coords.1 * 100)
         .sum()
 }
+
+fn calc_gps_pos(map: &HashMap<Vec2D, char>) -> isize {
+    calc_gps_pos_with(map, 'O', 1)
+}
+
+fn calc_gps_pos_wide(map: &HashMap<Vec2D, char>) -> isize {
+    calc_gps_pos_with(map, '[', 2)
+}
+
 // Puzzle 2 function
 fn puzzle2(input_file: &str) -> usize {
-    let input = fs::read_to_string(input_file).expect("Failed to read input file");
+    let (map, commands) = read_map_wide_commands(input_file);
+    print_map(&map);
+    let start = find_start(&map);
+
+    for command in commands {
+        if can_execute_command(&map, &start, &command) {
+
+        }
+    }
+
+    println!("Start: {:?}", start);
     0
+}
+
+fn can_execute_command(map: &HashMap<Vec2D, char>, start_pos: Vec2D, command: Vec2D) -> bool {
+    let cur_char = map.get(&start_pos).expect(&format!("Expecting valid position at {:?}", start_pos));
+    match cur_char {
+        '#' => false,
+        '.' => true,
+        x => panic!("Unexpected character found while checking command: {}!", x)
+    }
+}
+
+fn execute_command(map: &mut HashMap<Vec2D, char>, start_pos: Vec2D, command: Vec2D) {
+    let cur_char = map.get(&start_pos).expect(&format!("Expecting valid position at {:?}", start_pos));
+    match cur_char {
+        '@' => execute_command(map, start_pos + command, command),
+        '.' => (),
+        '[' => {
+            execute_command(map, start_pos + command, command);
+            execute_command(map, start_pos + Vec2D(1, 0), command);
+        }
+        x => panic!("Unexpected character found while executing command: {}!", x)
+    }
+    
+    let prev_pos = start_pos - command;
+    let prev_char = map.get_mut(&prev_pos).expect(&format!("Expecting valid position at {:?}", prev_pos));
+    let cur_char = map.get_mut(&start_pos).expect(&format!("Expecting valid position at {:?}", start_pos));
+    *cur_char = *prev_char;
+    *prev_char = '.';
 }
 
 #[cfg(test)]
