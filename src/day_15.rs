@@ -1,4 +1,5 @@
-use std::{collections::HashMap, fs, ops::{Add, AddAssign, Sub, SubAssign}};
+use std::{collections::HashMap, fs, io::{self, Write}, ops::{Add, AddAssign, Sub, SubAssign}};
+use std::collections::HashSet;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct Vec2D(isize, isize);
@@ -163,45 +164,55 @@ fn read_map_wide(map_str: &str) -> HashMap<Vec2D, char> {
 }
 
 fn print_map(map: &HashMap<Vec2D, char>) {
+    let mut stdout_handle = io::stdout().lock();
     for y in 0..10 {
         for x in 0..20 {
             if let Some(ch) = map.get(&Vec2D(x, y)) {
-                print!("{}", ch);
+                write!(stdout_handle, "{}", ch).unwrap();
             } else {
-                print!(".");
+                write!(stdout_handle, ".").unwrap();
             }
         }
-        println!();
+        writeln!(stdout_handle).unwrap();
 
     }
-    println!();
+    writeln!(stdout_handle).unwrap();
+    stdout_handle.flush().unwrap();
 }
 
-fn calc_gps_pos_with(map: &HashMap<Vec2D, char>, find_char: char, divisor: isize) -> isize {
+fn calc_gps_pos_with(map: &HashMap<Vec2D, char>, find_char: char) -> isize {
     map
         .iter()
         .filter(|(_, &char)| char == find_char)
-        .map(|(coords, _)| coords.0 / divisor + coords.1 * 100)
+        .map(|(coords, _)| coords.0 + coords.1 * 100)
         .sum()
 }
 
 fn calc_gps_pos(map: &HashMap<Vec2D, char>) -> isize {
-    calc_gps_pos_with(map, 'O', 1)
+    calc_gps_pos_with(map, 'O')
 }
 
 fn calc_gps_pos_wide(map: &HashMap<Vec2D, char>) -> isize {
-    calc_gps_pos_with(map, '[', 2)
+    calc_gps_pos_with(map, '[')
 }
 
 // Puzzle 2 function
 fn puzzle2(input_file: &str) -> isize {
     let (mut map, commands) = read_map_wide_commands(input_file);
-    print_map(&map);
     let mut bot_pos = find_start(&map);
 
     for command in commands {
-        println!("Command: {:?}", command);
+        // println!("Command: {:?}", command);
         if let Some(switches) = execute_command(&mut map, bot_pos, command, true) {
+            let switches: HashSet<_> = switches.into_iter().collect();
+            let mut switches: Vec<_> = switches.into_iter().collect();
+            switches.sort_by(|&(a, _), &(b, _)| match command {
+                Vec2D(-1, 0) => a.0.cmp(&b.0),
+                Vec2D(1, 0) => b.0.cmp(&a.0),
+                Vec2D(0, 1) => b.1.cmp(&a.1),
+                Vec2D(0, -1) => a.1.cmp(&b.1),
+                _ => panic!("Unexpected command!"),
+            });
             for (a, b) in switches {
                 let a_char = *map.get(&a).expect("Expecting switch position a to exist");
                 let b_char = *map.get(&b).expect("Expecting switch position b to exist");
@@ -210,7 +221,6 @@ fn puzzle2(input_file: &str) -> isize {
             }
             bot_pos = bot_pos + command;
         }
-        print_map(&map);
     }
 
     
@@ -231,7 +241,7 @@ fn execute_command(map: &mut HashMap<Vec2D, char>, start_pos: Vec2D, command: Ve
             } else {
                 let base_result = execute_command(map, start_pos + command, command, true);
                 if check_side {
-                    let side_result = execute_command(map, start_pos + dir + command, command, false);
+                    let side_result = execute_command(map, start_pos + dir + command, command, true);
                     base_result.zip(side_result).map(|(mut base, side)| {
                         base.extend(side);
                         base
@@ -268,4 +278,5 @@ mod tests {
     fn test_puzzle2() {
         assert_eq!(puzzle2("./input_test/day_15.txt"), 9021);
     }
+
 }
