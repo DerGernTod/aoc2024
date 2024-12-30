@@ -16,6 +16,7 @@
 // mod day_15;
 // mod day_16;
 mod day_17;
+mod day_18;
 // use day_01::day_01;
 // use day_02::day_02;
 // use day_03::day_03;
@@ -33,6 +34,7 @@ mod day_17;
 // use day_15::day_15;
 // use day_16::day_16;
 use day_17::day_17;
+use day_18::day_18;
 
 fn main() {
     // day_01();
@@ -52,4 +54,5 @@ fn main() {
     // day_15();
     // day_16();
     day_17();
+    // day_18();
 }

@@ -6,6 +6,16 @@ struct Registry {
     c: u64
 }
 
+impl Registry {
+    fn new(a: u64) -> Self {
+        Registry {
+            a,
+            b: 0,
+            c: 0
+        }
+    }
+}
+
 fn execute(registry: &mut Registry, exec_index: u64, operator: u64, operand: u64, out_val: &mut Vec<u64>, lookup: &mut HashSet<(Registry, u64)>) -> Option<u64> {
     let combo_value = evaluate_operand(registry, operand);
     match operator {
@@ -74,7 +84,7 @@ pub fn day_17() {
 fn puzzle1(input_file: &str) -> String {
     let (registry, ops) = read_registry_and_ops(input_file);
     
-    let out_vals = execute_operations(registry, &ops, false, registry.a).expect("Expecting output values for puzzle 1");
+    let out_vals = execute_operations(registry, &ops).expect("Expecting output values for puzzle 1");
     out_vals
         .iter()
         .map(|val| val.to_string())
@@ -82,7 +92,7 @@ fn puzzle1(input_file: &str) -> String {
         .join(",")
 }
 
-fn execute_operations(mut registry: Registry, ops: &Vec<u64>, check_equality: bool, init_val: u64) -> Option<Vec<u64>> {
+fn execute_operations(mut registry: Registry, ops: &Vec<u64>) -> Option<Vec<u64>> {
     let mut pointer = 0;
     let mut out_vals: Vec<u64> = Vec::new();
     let mut lookup: HashSet<(Registry, u64)> = HashSet::new();
@@ -90,27 +100,8 @@ fn execute_operations(mut registry: Registry, ops: &Vec<u64>, check_equality: bo
         let operator = ops.get(pointer).expect("Expecting operator");
         let operand = ops.get(pointer + 1).expect("Expecting operand");
         pointer = execute(&mut registry, pointer as u64, *operator, *operand, &mut out_vals, &mut lookup)? as usize;
-        if check_equality && !vec_starts_with(ops, &out_vals) {
-            return None;
-        // } else if *operator == 5 && out_vals.len() > 9 {
-        //     println!("Output for a={:o}: {:?}", init_val, out_vals);
-        //     std::thread::yield_now();
-        }
     }
     Some(out_vals)
-}
-
-fn vec_starts_with(ops: &Vec<u64>, out_vals: &Vec<u64>) -> bool {
-    for i in 0..out_vals.len() {
-        if let Some(op) = ops.get(i) {
-            if *op != out_vals[i] {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-    true
 }
 
 fn read_registry_and_ops(input_file: &str) -> (Registry, Vec<u64>) {
@@ -145,21 +136,32 @@ fn read_registry_and_ops(input_file: &str) -> (Registry, Vec<u64>) {
 
 // Puzzle 2 function
 fn puzzle2(input_file: &str) -> u64 {
-    let (registry, ops) = read_registry_and_ops(input_file);
-    let mut a = 0o6032004233;
-    loop {
-        let registry = Registry {
-            a,
-            b: 0,
-            c: 0
-        };
-        if let Some(out_vals) = execute_operations(registry, &ops, true, a) {
-            if out_vals == ops {
-                return a;
+    let (_, ops) = read_registry_and_ops(input_file);
+
+    (0..8)
+        .map(|i| find_next(i, &ops))
+        .filter(|&val| val != 0)
+        .min()
+        .unwrap_or_default()
+}
+
+fn find_next(a: u64, ops: &Vec<u64>) -> u64 {
+    execute_operations(Registry::new(a), ops)
+        .filter(|out_vals| ops.ends_with(&out_vals))
+        .map(|out_vals| {
+            if ops.len() == out_vals.len() {
+                vec![a]
+            } else {
+                (0..8)
+                    .map(|j| find_next(j + (a << 3), ops))
+                    .filter(|found_val| *found_val != 0)
+                    .collect()
             }
-        }
-        a += 0o10000000000;
-    }
+        })
+        .unwrap_or_default()
+        .into_iter()
+        .min()
+        .expect("No result found!")
 }
 
 #[cfg(test)]
